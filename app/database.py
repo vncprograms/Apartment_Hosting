@@ -1,60 +1,88 @@
 import sqlite3
 
+DATABASE_PATH = 'apartment_management.db'
+
 def get_db_connection():
-    conn = sqlite3.connect('database/apartment_management.db')
+    """Create a database connection."""
+    conn = sqlite3.connect(DATABASE_PATH)
     return conn
 
-def init_db():
+def create_tenants_table():
+    """Create the tenants table if it doesn't exist."""
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    # Create apartments table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS apartments (
-        apartment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        rent_price REAL,
-        utilities_price REAL,
-        status TEXT
-    )
-    ''')
-
-    # Create tenants table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tenants (
-        tenant_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        lease_start_date TEXT,
-        lease_end_date TEXT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
         deposit REAL,
-        apartment_id INTEGER,
-        FOREIGN KEY (apartment_id) REFERENCES apartments (apartment_id)
-    )
+        apartment_number TEXT,
+        notes TEXT  -- Added notes column for storing tenant notes
+    );
     ''')
+    conn.commit()
+    conn.close()
 
-    # Create payments table
+def add_tenant(first_name, last_name, phone, email, deposit, apartment_number, notes):
+    """Add a new tenant to the database."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS payments (
-        payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id INTEGER,
-        amount REAL,
-        month TEXT,
-        year INTEGER,
-        payment_date TEXT,
-        FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
-    )
-    ''')
+        INSERT INTO tenants (first_name, last_name, phone, email, deposit, apartment_number, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (first_name, last_name, phone, email, deposit, apartment_number, notes))
+    conn.commit()
+    conn.close()
 
-    # Create notes table
+def get_all_tenants():
+    """Get all tenants from the database."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, first_name, last_name, apartment_number, notes FROM tenants")
+    tenants = cursor.fetchall()
+    conn.close()
+
+    return [{
+        'id': tenant[0],
+        'first_name': tenant[1],
+        'last_name': tenant[2],
+        'apartment_number': tenant[3],
+        'notes': tenant[4]
+    } for tenant in tenants]
+
+def get_tenant_by_id(tenant_id):
+    """Get tenant details by ID."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS notes (
-        note_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id INTEGER,
-        note_type TEXT,
-        note_description TEXT,
-        date_added TEXT,
-        FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
-    )
-    ''')
+        SELECT id, first_name, last_name, phone, email, deposit, apartment_number, notes
+        FROM tenants WHERE id = ?
+    ''', (tenant_id,))
+    tenant = cursor.fetchone()
+    conn.close()
 
+    if tenant:
+        return {
+            'id': tenant[0],
+            'first_name': tenant[1],
+            'last_name': tenant[2],
+            'phone': tenant[3],
+            'email': tenant[4],
+            'deposit': tenant[5],
+            'apartment_number': tenant[6],
+            'notes': tenant[7]  # Include notes
+        }
+    return None
+
+def update_tenant_notes(tenant_id, notes):
+    """Update tenant notes in the database."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE tenants SET notes = ? WHERE id = ?
+    ''', (notes, tenant_id))
     conn.commit()
     conn.close()
