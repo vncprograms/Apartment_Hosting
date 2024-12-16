@@ -1,16 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-# Dummy function to simulate adding a tenant or note
-def add_tenant_to_db(first_name, last_name, apartment_number):
-    # Simulate adding a tenant to the database (this should be integrated with your actual database code)
-    print(f"Tenant Added: {first_name} {last_name}, Apartment: {apartment_number}")
-    # You can add actual database interaction here
+# Dummy function to simulate adding a tenant or note (For database integration, replace these with actual DB code)
+def add_tenant_to_db(first_name, last_name, apartment_number, email):
+    print(f"Tenant Added: {first_name} {last_name}, Apartment: {apartment_number}, Email: {email}")
 
 def add_note_to_tenant(tenant_name, apartment_number, note_type, note):
-    # Simulate adding a note to a tenant (this should be integrated with your actual database code)
     print(f"Note Added for {tenant_name} (Apartment: {apartment_number}): {note_type} - {note}")
-    # You can add actual database interaction here
 
 class ApartmentManagementApp:
     def __init__(self, root):
@@ -37,6 +33,14 @@ class ApartmentManagementApp:
         # Add content for the Tenants tab
         label = tk.Label(self.tenants_frame, text="Tenant List")
         label.pack()
+
+        # Search bar for tenants
+        self.search_label = tk.Label(self.tenants_frame, text="Search by Name or Apartment:")
+        self.search_label.pack()
+
+        self.search_entry = tk.Entry(self.tenants_frame)
+        self.search_entry.pack()
+        self.search_entry.bind("<KeyRelease>", self.search_tenants)  # Trigger search as user types
 
         # Create a Listbox or Treeview to show the list of tenants
         self.tenant_listbox = tk.Listbox(self.tenants_frame, height=10, width=50)
@@ -86,6 +90,10 @@ class ApartmentManagementApp:
         self.apartment_number_entry = tk.Entry(self.add_tenant_window)
         self.apartment_number_entry.pack()
 
+        tk.Label(self.add_tenant_window, text="Email:").pack()
+        self.email_entry = tk.Entry(self.add_tenant_window)
+        self.email_entry.pack()
+
         add_button = tk.Button(self.add_tenant_window, text="Add Tenant", command=self.add_tenant)
         add_button.pack()
 
@@ -94,8 +102,9 @@ class ApartmentManagementApp:
         first_name = self.first_name_entry.get()
         last_name = self.last_name_entry.get()
         apartment_number = self.apartment_number_entry.get()
+        email = self.email_entry.get()
 
-        if not first_name or not last_name or not apartment_number:
+        if not first_name or not last_name or not apartment_number or not email:
             messagebox.showerror("Error", "All fields are required!")
             return
 
@@ -103,15 +112,48 @@ class ApartmentManagementApp:
         tenant = {
             'first_name': first_name,
             'last_name': last_name,
-            'apartment_number': apartment_number
+            'apartment_number': apartment_number,
+            'email': email,
+            'notes': []  # Initialize an empty list for notes
         }
         self.tenants.append(tenant)
 
         # Add tenant to the Listbox
-        self.tenant_listbox.insert(tk.END, f"{first_name} {last_name} - Apartment: {apartment_number}")
+        self.update_tenant_listbox()
 
         # Close the "Add Tenant" form
         self.add_tenant_window.destroy()
+
+        # Simulate adding the tenant to the database
+        add_tenant_to_db(first_name, last_name, apartment_number, email)
+
+    def search_tenants(self, event=None):
+        """Search for tenants by name or apartment number."""
+        search_term = self.search_entry.get().lower()
+
+        # Filter tenants based on the search term
+        filtered_tenants = [
+            tenant for tenant in self.tenants
+            if search_term in tenant['first_name'].lower() or
+            search_term in tenant['last_name'].lower() or
+            search_term in tenant['apartment_number']
+        ]
+
+        # Update the tenant listbox to display filtered tenants
+        self.update_tenant_listbox(filtered_tenants)
+
+    def update_tenant_listbox(self, tenants=None):
+        """Update the tenant listbox with the current list of tenants."""
+        # Clear the current listbox
+        self.tenant_listbox.delete(0, tk.END)
+
+        # Use the provided tenants list or the full tenant list
+        tenants_to_display = tenants if tenants is not None else self.tenants
+
+        # Populate the listbox with tenant info
+        for tenant in tenants_to_display:
+            tenant_info = f"{tenant['first_name']} {tenant['last_name']} - Apartment: {tenant['apartment_number']} - Email: {tenant['email']}"
+            self.tenant_listbox.insert(tk.END, tenant_info)
 
     def open_add_note_form(self):
         """Open a form to add a note to a tenant."""
@@ -165,6 +207,11 @@ class ApartmentManagementApp:
         if not note_type or not note:
             messagebox.showerror("Error", "All fields are required!")
             return
+
+        # Find tenant and add the note
+        for tenant in self.tenants:
+            if tenant['first_name'] == first_name and tenant['last_name'] == last_name:
+                tenant['notes'].append({'note_type': note_type, 'note': note})
 
         # Add note to the selected tenant (this is just a simulation)
         add_note_to_tenant(f"{first_name} {last_name}", apartment_number, note_type, note)
