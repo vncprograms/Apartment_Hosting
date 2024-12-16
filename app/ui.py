@@ -1,351 +1,423 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
-import re
-import json
-import os
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QListWidget, QDialog, QFormLayout, QDialogButtonBox, QTextEdit, QDateEdit, QMessageBox
+from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtGui import QFont
+import sys
 
-# Constants for file paths (for persistent storage)
-DATA_FILE = 'tenants_data.json'
+class ApartmentManagementApp(QWidget):
+    def __init__(self):
+        super().__init__()
 
-def load_data():
-    """Load tenant and notes data from the JSON file."""
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r') as file:
-            return json.load(file)
-    return []
+        self.setWindowTitle("Apartment Management System")
+        self.setGeometry(100, 100, 800, 600)  # Increased size for better spacing
 
-def save_data(tenants):
-    """Save tenant and notes data to a JSON file."""
-    with open(DATA_FILE, 'w') as file:
-        json.dump(tenants, file)
+        self.tenants = []  # List to store tenant data
 
-def add_tenant_to_db(first_name, last_name, apartment_number, email):
-    """Simulate adding tenant to the database (for now, we log to console)."""
-    print(f"Tenant Added: {first_name} {last_name}, Apartment: {apartment_number}, Email: {email}")
+        # Apply StyleSheet for aesthetics
+        self.setStyleSheet("""
+            QWidget {
+                font-family: 'Arial', sans-serif;
+                background-color: #f4f4f4;
+            }
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+            }
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QLineEdit, QTextEdit {
+                font-size: 16px;
+                padding: 10px;
+                border-radius: 5px;
+                border: 1px solid #ddd;
+            }
+            QListWidget {
+                font-size: 16px;
+                padding: 10px;
+                background-color: #fff;
+                border-radius: 5px;
+                border: 1px solid #ddd;
+                height: 150px;
+            }
+        """)
 
-def add_note_to_tenant(tenant_name, apartment_number, note_type, note):
-    """Simulate adding a note for a tenant (log to console)."""
-    print(f"Note Added for {tenant_name} (Apartment: {apartment_number}): {note_type} - {note}")
+        # UI setup
+        self.layout = QVBoxLayout(self)
 
-class ApartmentManagementApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Apartment Management System")
-        self.tenants = load_data()  # Load tenant data from file
-        self.create_notebook()
+        # Tenant List
+        self.tenant_list_label = QLabel("Tenant List:")
+        self.layout.addWidget(self.tenant_list_label)
 
-    def create_notebook(self):
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True)
+        self.tenant_list_widget = QListWidget(self)
+        self.layout.addWidget(self.tenant_list_widget)
 
-        # Create tabs
-        self.create_tenants_tab()
-        self.create_apartments_tab()
-        self.create_revenue_tab()
+        # Add Tenant Button
+        self.add_tenant_button = QPushButton("Add Tenant", self)
+        self.add_tenant_button.clicked.connect(self.open_add_tenant_form)
+        self.layout.addWidget(self.add_tenant_button)
 
-    def create_tenants_tab(self):
-        self.tenants_frame = ttk.Frame(self.notebook)
-        self.tenants_frame.pack(fill="both", expand=True)
-        self.notebook.add(self.tenants_frame, text="Tenants")
+        # Add Note Button
+        self.add_note_button = QPushButton("Add Note/Complaint/Payment", self)
+        self.add_note_button.clicked.connect(self.open_add_note_form)
+        self.layout.addWidget(self.add_note_button)
 
-        label = tk.Label(self.tenants_frame, text="Tenant List")
-        label.pack()
+        # View Notes Button
+        self.view_notes_button = QPushButton("View Notes/Complaints/Payments", self)
+        self.view_notes_button.clicked.connect(self.view_notes)
+        self.layout.addWidget(self.view_notes_button)
 
-        self.search_label = tk.Label(self.tenants_frame, text="Search by Name or Apartment:")
-        self.search_label.pack()
+        # Generate Report Button
+        self.report_button = QPushButton("Generate Report", self)
+        self.report_button.clicked.connect(self.generate_report)
+        self.layout.addWidget(self.report_button)
 
-        self.search_entry = tk.Entry(self.tenants_frame)
-        self.search_entry.pack()
-        self.search_entry.bind("<KeyRelease>", self.search_tenants)
+        # Delete Tenant Button
+        self.delete_tenant_button = QPushButton("Delete Tenant", self)
+        self.delete_tenant_button.clicked.connect(self.delete_tenant)
+        self.layout.addWidget(self.delete_tenant_button)
 
-        self.tenant_listbox = tk.Listbox(self.tenants_frame, height=10, width=50)
-        self.tenant_listbox.pack()
-
-        add_tenant_button = tk.Button(self.tenants_frame, text="Add Tenant", command=self.open_add_tenant_form)
-        add_tenant_button.pack()
-
-        add_note_button = tk.Button(self.tenants_frame, text="Add Note", command=self.open_add_note_form)
-        add_note_button.pack()
-
-        self.tenant_listbox.bind("<Double-1>", self.view_tenant_details)
-
-    def create_apartments_tab(self):
-        self.apartments_frame = ttk.Frame(self.notebook)
-        self.apartments_frame.pack(fill="both", expand=True)
-        self.notebook.add(self.apartments_frame, text="Apartments")
-
-        label = tk.Label(self.apartments_frame, text="Apartment List")
-        label.pack()
-
-    def create_revenue_tab(self):
-        self.revenue_frame = ttk.Frame(self.notebook)
-        self.revenue_frame.pack(fill="both", expand=True)
-        self.notebook.add(self.revenue_frame, text="Revenue")
-
-        label = tk.Label(self.revenue_frame, text="Revenue Information")
-        label.pack()
+        # Update Tenant Button
+        self.update_tenant_button = QPushButton("Update Tenant", self)
+        self.update_tenant_button.clicked.connect(self.open_update_tenant_form)
+        self.layout.addWidget(self.update_tenant_button)
 
     def open_add_tenant_form(self):
         """Open a form to add a new tenant."""
-        self.add_tenant_window = tk.Toplevel(self.root)
-        self.add_tenant_window.title("Add Tenant")
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Tenant")
 
-        tk.Label(self.add_tenant_window, text="First Name:").pack()
-        self.first_name_entry = tk.Entry(self.add_tenant_window)
-        self.first_name_entry.pack()
+        form_layout = QFormLayout()
 
-        tk.Label(self.add_tenant_window, text="Last Name:").pack()
-        self.last_name_entry = tk.Entry(self.add_tenant_window)
-        self.last_name_entry.pack()
+        self.first_name_input = QLineEdit(dialog)
+        form_layout.addRow("First Name:", self.first_name_input)
 
-        tk.Label(self.add_tenant_window, text="Apartment Number:").pack()
-        self.apartment_number_entry = tk.Entry(self.add_tenant_window)
-        self.apartment_number_entry.pack()
+        self.last_name_input = QLineEdit(dialog)
+        form_layout.addRow("Last Name:", self.last_name_input)
 
-        tk.Label(self.add_tenant_window, text="Email:").pack()
-        self.email_entry = tk.Entry(self.add_tenant_window)
-        self.email_entry.pack()
+        self.apartment_input = QLineEdit(dialog)
+        form_layout.addRow("Apartment Number:", self.apartment_input)
 
-        add_button = tk.Button(self.add_tenant_window, text="Add Tenant", command=self.add_tenant)
-        add_button.pack()
+        self.email_input = QLineEdit(dialog)
+        form_layout.addRow("Email:", self.email_input)
+
+        self.phone_input = QLineEdit(dialog)
+        form_layout.addRow("Phone Number:", self.phone_input)
+
+        self.payment_input = QLineEdit(dialog)
+        form_layout.addRow("Payment Amount:", self.payment_input)
+
+        self.payment_date_input = QDateEdit(dialog)
+        self.payment_date_input.setDate(QDate.currentDate())
+        form_layout.addRow("Payment Date:", self.payment_date_input)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(lambda: self.confirm_action(self.add_tenant, dialog))
+        buttons.rejected.connect(dialog.reject)
+
+        form_layout.addWidget(buttons)
+        dialog.setLayout(form_layout)
+
+        dialog.exec_()
 
     def add_tenant(self):
-        """Add the tenant to the list (and ideally database)."""
-        first_name = self.first_name_entry.get()
-        last_name = self.last_name_entry.get()
-        apartment_number = self.apartment_number_entry.get()
-        email = self.email_entry.get()
+        """Add the tenant to the list."""
+        first_name = self.first_name_input.text()
+        last_name = self.last_name_input.text()
+        apartment_number = self.apartment_input.text()
+        email = self.email_input.text()
+        phone = self.phone_input.text()
+        payment_amount = self.payment_input.text()
+        payment_date = self.payment_date_input.date().toString(Qt.ISODate)
 
-        if not first_name or not last_name or not apartment_number or not email:
-            messagebox.showerror("Error", "All fields are required!")
-            return
+        if not first_name or not last_name or not apartment_number or not email or not phone:
+            return  # Don't proceed if fields are empty
 
-        # Validate apartment number format
-        if not apartment_number.isdigit():
-            messagebox.showerror("Error", "Apartment number should be a number!")
-            return
-
-        # Validate email format
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messagebox.showerror("Error", "Invalid email format!")
-            return
-
-        # Check if email already exists
+        # Prevent duplicates
         for tenant in self.tenants:
-            if tenant['email'] == email:
-                messagebox.showerror("Error", "This email is already in use!")
-                return
+            if tenant['first_name'] == first_name and tenant['last_name'] == last_name and tenant['apartment_number'] == apartment_number:
+                return  # Tenant already exists, no need to add again
 
-        # Add tenant to the tenants list
         tenant = {
             'first_name': first_name,
             'last_name': last_name,
             'apartment_number': apartment_number,
             'email': email,
-            'notes': []
+            'phone': phone,
+            'notes': [],
+            'complaints': [],
+            'payments': [{'amount': payment_amount, 'date': payment_date}],
+            'late_fee': None
         }
+
         self.tenants.append(tenant)
+        self.update_tenant_list_widget()
 
-        self.update_tenant_listbox()
+    def confirm_action(self, action, dialog):
+        """Confirm an action and then perform it."""
+        reply = QMessageBox.question(self, 'Confirm Action', 'Are you sure you want to perform this action?',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-        self.add_tenant_window.destroy()
+        if reply == QMessageBox.Yes:
+            action()
+            dialog.accept()  # Close the dialog after action is performed
 
-        # Save tenant data
-        save_data(self.tenants)
+    def update_tenant_list_widget(self):
+        """Update the tenant list widget with the current tenants."""
+        self.tenant_list_widget.clear()
+        for tenant in self.tenants:
+            tenant_info = f"{tenant['first_name']} {tenant['last_name']} - Apt: {tenant['apartment_number']}"
+            self.tenant_list_widget.addItem(tenant_info)
 
-        # Simulate adding the tenant to the database
-        add_tenant_to_db(first_name, last_name, apartment_number, email)
+    def open_update_tenant_form(self):
+        """Open a form to update tenant info."""
+        selected_item = self.tenant_list_widget.currentItem()
+        if not selected_item:
+            return
 
-    def search_tenants(self, event=None):
-        """Search for tenants by name or apartment number."""
-        search_term = self.search_entry.get().lower()
+        tenant_info = selected_item.text()
 
-        # Filter tenants based on the search term
-        filtered_tenants = [
-            tenant for tenant in self.tenants
-            if search_term in tenant['first_name'].lower() or
-            search_term in tenant['last_name'].lower() or
-            search_term in tenant['apartment_number']
-        ]
+        tenant_info_parts = tenant_info.split(" - ")
+        if len(tenant_info_parts) < 2:
+            return
 
-        self.update_tenant_listbox(filtered_tenants)
+        tenant_name = tenant_info_parts[0]
+        apartment_number = tenant_info_parts[1].split(":")[1].strip()
 
-    def update_tenant_listbox(self, tenants=None):
-        """Update the tenant listbox with the current list of tenants."""
-        self.tenant_listbox.delete(0, tk.END)
+        # Find the tenant to update
+        tenant = None
+        for t in self.tenants:
+            if t['first_name'] + " " + t['last_name'] == tenant_name and t['apartment_number'] == apartment_number:
+                tenant = t
+                break
 
-        tenants_to_display = tenants if tenants is not None else self.tenants
+        if tenant:
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"Update Tenant: {tenant_name}")
 
-        for tenant in tenants_to_display:
-            tenant_info = f"{tenant['first_name']} {tenant['last_name']} - Apartment: {tenant['apartment_number']} - Email: {tenant['email']}"
-            self.tenant_listbox.insert(tk.END, tenant_info)
+            form_layout = QFormLayout()
+
+            self.first_name_input = QLineEdit(tenant['first_name'], dialog)
+            form_layout.addRow("First Name:", self.first_name_input)
+
+            self.last_name_input = QLineEdit(tenant['last_name'], dialog)
+            form_layout.addRow("Last Name:", self.last_name_input)
+
+            self.apartment_input = QLineEdit(tenant['apartment_number'], dialog)
+            form_layout.addRow("Apartment Number:", self.apartment_input)
+
+            self.email_input = QLineEdit(tenant['email'], dialog)
+            form_layout.addRow("Email:", self.email_input)
+
+            self.phone_input = QLineEdit(tenant['phone'], dialog)
+            form_layout.addRow("Phone Number:", self.phone_input)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            buttons.accepted.connect(lambda: self.confirm_action(lambda: self.update_tenant(tenant), dialog))
+            buttons.rejected.connect(dialog.reject)
+
+            form_layout.addWidget(buttons)
+            dialog.setLayout(form_layout)
+
+            dialog.exec_()
+
+    def update_tenant(self, tenant):
+        """Update the tenant information."""
+        tenant['first_name'] = self.first_name_input.text()
+        tenant['last_name'] = self.last_name_input.text()
+        tenant['apartment_number'] = self.apartment_input.text()
+        tenant['email'] = self.email_input.text()
+        tenant['phone'] = self.phone_input.text()
+
+        self.update_tenant_list_widget()
+
+    def delete_tenant(self):
+        """Delete the selected tenant."""
+        selected_item = self.tenant_list_widget.currentItem()
+        if not selected_item:
+            return
+
+        tenant_info = selected_item.text()
+        tenant_info_parts = tenant_info.split(" - ")
+        tenant_name = tenant_info_parts[0]
+        apartment_number = tenant_info_parts[1].split(":")[1].strip()
+
+        # Find and remove the tenant
+        tenant_to_delete = None
+        for tenant in self.tenants:
+            if tenant['first_name'] + " " + tenant['last_name'] == tenant_name and tenant['apartment_number'] == apartment_number:
+                tenant_to_delete = tenant
+                break
+
+        if tenant_to_delete:
+            self.tenants.remove(tenant_to_delete)
+
+        self.update_tenant_list_widget()
 
     def open_add_note_form(self):
-        """Open a form to add a note to a tenant."""
-        self.add_note_window = tk.Toplevel(self.root)
-        self.add_note_window.title("Add Note")
-
-        self.note_search_label = tk.Label(self.add_note_window, text="Search Tenant by Name or Apartment:")
-        self.note_search_label.pack()
-
-        self.note_search_entry = tk.Entry(self.add_note_window)
-        self.note_search_entry.pack()
-        self.note_search_entry.bind("<KeyRelease>", self.search_tenants_for_note)
-
-        self.tenant_select_listbox = tk.Listbox(self.add_note_window, height=5, width=50)
-        self.update_tenant_select_listbox()
-        self.tenant_select_listbox.pack()
-
-        self.note_type_label = tk.Label(self.add_note_window, text="Select Note Type:")
-        self.note_type_label.pack()
-
-        self.note_type_dropdown = ttk.Combobox(self.add_note_window, values=["Complaint", "Late Fee", "Maintenance Request"])
-        self.note_type_dropdown.pack()
-
-        self.note_label = tk.Label(self.add_note_window, text="Note:")
-        self.note_label.pack()
-
-        self.note_entry = tk.Entry(self.add_note_window)
-        self.note_entry.pack()
-
-        add_note_button = tk.Button(self.add_note_window, text="Add Note", command=self.add_note)
-        add_note_button.pack()
-
-    def search_tenants_for_note(self, event=None):
-        """Search for tenants while adding a note."""
-        search_term = self.note_search_entry.get().lower()
-
-        filtered_tenants = [
-            tenant for tenant in self.tenants
-            if search_term in tenant['first_name'].lower() or
-            search_term in tenant['last_name'].lower() or
-            search_term in tenant['apartment_number']
-        ]
-
-        self.update_tenant_select_listbox(filtered_tenants)
-
-    def update_tenant_select_listbox(self, tenants=None):
-        """Update the tenant selection listbox in the 'Add Note' form."""
-        self.tenant_select_listbox.delete(0, tk.END)
-
-        tenants_to_display = tenants if tenants is not None else self.tenants
-
-        for tenant in tenants_to_display:
-            tenant_info = f"{tenant['first_name']} {tenant['last_name']} - Apartment: {tenant['apartment_number']}"
-            self.tenant_select_listbox.insert(tk.END, tenant_info)
-
-    def add_note(self):
-        """Add a note to the selected tenant."""
-        selected_tenant = self.tenant_select_listbox.curselection()
-        if not selected_tenant:
-            messagebox.showerror("Error", "Please select a tenant!")
+        """Open a form to add a note, complaint, late fee, or payment to the selected tenant."""
+        selected_item = self.tenant_list_widget.currentItem()
+        if not selected_item:
             return
 
-        tenant_info = self.tenant_select_listbox.get(selected_tenant[0])
-        tenant_name, apartment_number = tenant_info.split(" - ")
-        first_name, last_name = tenant_name.split(" ")
+        tenant_info = selected_item.text()
+        tenant_name = tenant_info.split(" - ")[0]
 
-        note_type = self.note_type_dropdown.get()
-        note = self.note_entry.get()
+        # Find the tenant to add a note
+        tenant = None
+        for t in self.tenants:
+            if t['first_name'] + " " + t['last_name'] == tenant_name:
+                tenant = t
+                break
 
-        if not note_type or not note:
-            messagebox.showerror("Error", "All fields are required!")
+        if tenant:
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"Add Note for {tenant_name}")
+
+            form_layout = QFormLayout()
+
+            # Note input
+            self.note_input = QTextEdit(dialog)
+            form_layout.addRow("Note:", self.note_input)
+
+            # Complaint input
+            self.complaint_input = QLineEdit(dialog)
+            form_layout.addRow("Complaint:", self.complaint_input)
+
+            # Late fee input
+            self.late_fee_input = QLineEdit(dialog)
+            form_layout.addRow("Late Fee:", self.late_fee_input)
+
+            # Payment input
+            self.payment_amount_input = QLineEdit(dialog)
+            form_layout.addRow("Payment Amount:", self.payment_amount_input)
+
+            self.payment_date_input = QDateEdit(dialog)
+            self.payment_date_input.setDate(QDate.currentDate())
+            form_layout.addRow("Payment Date:", self.payment_date_input)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            buttons.accepted.connect(lambda: self.add_note_to_tenant(tenant, dialog))
+            buttons.rejected.connect(dialog.reject)
+
+            form_layout.addWidget(buttons)
+            dialog.setLayout(form_layout)
+
+            dialog.exec_()
+
+    def add_note_to_tenant(self, tenant, dialog):
+        """Add the note to the tenant."""
+        note = self.note_input.toPlainText()
+        complaint = self.complaint_input.text()
+        late_fee = self.late_fee_input.text()
+        payment_amount = self.payment_amount_input.text()
+        payment_date = self.payment_date_input.date().toString(Qt.ISODate)
+
+        # Add the new information to the tenant
+        if note:
+            tenant['notes'].append(note)
+        if complaint:
+            tenant['complaints'].append(complaint)
+        if late_fee:
+            tenant['late_fee'] = late_fee  # Assuming a single late fee for simplicity
+        if payment_amount:
+            tenant['payments'].append({'amount': payment_amount, 'date': payment_date})
+
+        # After adding, update the list of tenants and close the dialog
+        self.update_tenant_list_widget()
+        dialog.accept()
+
+    def view_notes(self):
+        """View the notes, complaints, payments, and late fee of the selected tenant."""
+        selected_item = self.tenant_list_widget.currentItem()
+        if not selected_item:
             return
 
-        for tenant in self.tenants:
-            if tenant['first_name'] == first_name and tenant['last_name'] == last_name:
-                tenant['notes'].append({'note_type': note_type, 'note': note})
+        tenant_info = selected_item.text()
+        tenant_name = tenant_info.split(" - ")[0]
 
-        add_note_to_tenant(f"{first_name} {last_name}", apartment_number, note_type, note)
+        # Find the tenant to view notes
+        tenant = None
+        for t in self.tenants:
+            if t['first_name'] + " " + t['last_name'] == tenant_name:
+                tenant = t
+                break
 
-        save_data(self.tenants)  # Save the updated tenant data
+        if tenant:
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"Notes, Complaints, Payments for {tenant_name}")
 
-        self.add_note_window.destroy()
+            form_layout = QVBoxLayout()
 
-    def view_tenant_details(self, event=None):
-        """View detailed information of the selected tenant."""
-        selected_tenant_index = self.tenant_listbox.curselection()
-        if not selected_tenant_index:
-            return
+            # Notes section
+            notes_text = QTextEdit(dialog)
+            notes_text.setReadOnly(True)
+            notes_text.setPlainText("\n".join(tenant['notes']) if tenant['notes'] else "No notes available.")
+            form_layout.addWidget(QLabel("Notes:"))
+            form_layout.addWidget(notes_text)
 
-        selected_tenant = self.tenants[selected_tenant_index[0]]
+            # Complaints section
+            complaints_text = QTextEdit(dialog)
+            complaints_text.setReadOnly(True)
+            complaints_text.setPlainText("\n".join(tenant['complaints']) if tenant['complaints'] else "No complaints available.")
+            form_layout.addWidget(QLabel("Complaints:"))
+            form_layout.addWidget(complaints_text)
 
-        tenant_details_window = tk.Toplevel(self.root)
-        tenant_details_window.title(f"Tenant Details - {selected_tenant['first_name']} {selected_tenant['last_name']}")
+            # Payments section
+            payments_text = QTextEdit(dialog)
+            payments_text.setReadOnly(True)
+            if tenant['payments']:
+                payments_content = "\n".join([f"{p['amount']} on {p['date']}" for p in tenant['payments']])
+            else:
+                payments_content = "No payments recorded."
+            payments_text.setPlainText(payments_content)
+            form_layout.addWidget(QLabel("Payments:"))
+            form_layout.addWidget(payments_text)
 
-        details_label = tk.Label(tenant_details_window, text=f"Name: {selected_tenant['first_name']} {selected_tenant['last_name']}")
-        details_label.pack()
+            # Late Fee section
+            late_fee_text = QTextEdit(dialog)
+            late_fee_text.setReadOnly(True)
+            late_fee_text.setPlainText(tenant.get('late_fee', "No late fee recorded"))
+            form_layout.addWidget(QLabel("Late Fee:"))
+            form_layout.addWidget(late_fee_text)
 
-        apartment_label = tk.Label(tenant_details_window, text=f"Apartment: {selected_tenant['apartment_number']}")
-        apartment_label.pack()
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(dialog.accept)
+            form_layout.addWidget(close_button)
 
-        email_label = tk.Label(tenant_details_window, text=f"Email: {selected_tenant['email']}")
-        email_label.pack()
+            dialog.setLayout(form_layout)
+            dialog.exec_()
 
-        notes_label = tk.Label(tenant_details_window, text="Notes:")
-        notes_label.pack()
+    def generate_report(self):
+        """Generate a report of all tenants."""
+        report = "\n\n".join([f"Name: {tenant['first_name']} {tenant['last_name']}\n"
+                             f"Apt: {tenant['apartment_number']}\n"
+                             f"Email: {tenant['email']}\n"
+                             f"Phone: {tenant['phone']}\n"
+                             f"Payments: {tenant['payments']}\n"
+                             f"Notes: {tenant['notes']}\n"
+                             f"Complaints: {tenant['complaints']}" for tenant in self.tenants])
 
-        for note in selected_tenant['notes']:
-            note_label = tk.Label(tenant_details_window, text=f"{note['note_type']}: {note['note']}")
-            note_label.pack()
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Tenant Report")
+        text_edit = QTextEdit(dialog)
+        text_edit.setReadOnly(True)
+        text_edit.setPlainText(report)
+        layout = QVBoxLayout()
+        layout.addWidget(text_edit)
+        dialog.setLayout(layout)
+        dialog.exec_()
 
-        edit_button = tk.Button(tenant_details_window, text="Edit Info", command=lambda: self.open_edit_tenant_form(selected_tenant))
-        edit_button.pack()
-
-    def open_edit_tenant_form(self, tenant):
-        """Open a form to edit the selected tenant's information."""
-        self.edit_tenant_window = tk.Toplevel(self.root)
-        self.edit_tenant_window.title(f"Edit Tenant - {tenant['first_name']} {tenant['last_name']}")
-
-        tk.Label(self.edit_tenant_window, text="First Name:").pack()
-        self.edit_first_name_entry = tk.Entry(self.edit_tenant_window)
-        self.edit_first_name_entry.insert(0, tenant['first_name'])
-        self.edit_first_name_entry.pack()
-
-        tk.Label(self.edit_tenant_window, text="Last Name:").pack()
-        self.edit_last_name_entry = tk.Entry(self.edit_tenant_window)
-        self.edit_last_name_entry.insert(0, tenant['last_name'])
-        self.edit_last_name_entry.pack()
-
-        tk.Label(self.edit_tenant_window, text="Apartment Number:").pack()
-        self.edit_apartment_number_entry = tk.Entry(self.edit_tenant_window)
-        self.edit_apartment_number_entry.insert(0, tenant['apartment_number'])
-        self.edit_apartment_number_entry.pack()
-
-        tk.Label(self.edit_tenant_window, text="Email:").pack()
-        self.edit_email_entry = tk.Entry(self.edit_tenant_window)
-        self.edit_email_entry.insert(0, tenant['email'])
-        self.edit_email_entry.pack()
-
-        save_button = tk.Button(self.edit_tenant_window, text="Save Changes", command=lambda: self.save_edited_tenant(tenant))
-        save_button.pack()
-
-    def save_edited_tenant(self, tenant):
-        """Save the edited tenant information."""
-        tenant['first_name'] = self.edit_first_name_entry.get()
-        tenant['last_name'] = self.edit_last_name_entry.get()
-        tenant['apartment_number'] = self.edit_apartment_number_entry.get()
-        tenant['email'] = self.edit_email_entry.get()
-
-        # Validate fields
-        if not tenant['first_name'] or not tenant['last_name'] or not tenant['apartment_number'] or not tenant['email']:
-            messagebox.showerror("Error", "All fields are required!")
-            return
-
-        # Validate apartment number and email
-        if not tenant['apartment_number'].isdigit():
-            messagebox.showerror("Error", "Apartment number should be a number!")
-            return
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", tenant['email']):
-            messagebox.showerror("Error", "Invalid email format!")
-            return
-
-        save_data(self.tenants)  # Save the updated tenant data
-
-        self.edit_tenant_window.destroy()
-        self.update_tenant_listbox()
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = ApartmentManagementApp(root)
-    root.mainloop()
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = ApartmentManagementApp()
+    window.show()
+    sys.exit(app.exec_())
