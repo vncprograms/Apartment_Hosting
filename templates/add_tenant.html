@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Tenant</title>
+</head>
+<body>
+    <h1>Add New Tenant</h1>
+    <form action="{{ url_for('add_tenant') }}" method="POST">
+        <label for="first_name">First Name:</label>
+        <input type="text" name="first_name" required><br><br>
+
+        <label for="last_name">Last Name:</label>
+        <input type="text" name="last_name" required><br><br>
+
+        <label for="apartment_number">Apartment Number:</label>
+        <input type="text" name="apartment_number" required><br><br>
+
+        <label for="email">Email:</label>
+        <input type="email" name="email" required><br><br>
+
+        <label for="phone">Phone:</label>
+        <input type="text" name="phone"><br><br>
+
+        <label for="notes">Notes:</label>
+        <textarea name="notes"></textarea><br><br>
+
+        <button type="submit">Add Tenant</button>
+    </form>
+
+    <br><br>
+    <a href="{{ url_for('index') }}">Back to Tenant List</a>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Management</title>
+</head>
+<body>
+
+<h1>Tenant Management</h1>
+
+<!-- Search form -->
+<form action="{{ url_for('search') }}" method="POST">
+    <input type="text" name="query" placeholder="Search tenants...">
+    <button type="submit">Search</button>
+</form>
+
+<!-- Tenant List -->
+<table border="1">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Apartment Number</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tenant in tenants %}
+        <tr>
+            <td>{{ tenant.first_name }}</td>
+            <td>{{ tenant.last_name }}</td>
+            <td>{{ tenant.apartment_number }}</td>
+            <td>{{ tenant.email }}</td>
+            <td>{{ tenant.phone }}</td>
+            <td>{{ tenant.notes }}</td>
+            <td>
+                <a href="{{ url_for('edit_tenant', id=tenant.id) }}">Edit</a>
+                <a href="{{ url_for('view_tenant', id=tenant.id) }}">View</a>
+
+                <!-- Delete Tenant Form -->
+                <form action="{{ url_for('delete_tenant', id=tenant.id) }}" method="POST" style="display:inline;">
+                    <button type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{{ url_for('add_tenant') }}">Add New Tenant</a>
+
+</body>
+</html>

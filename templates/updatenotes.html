@@ -1,0 +1,31 @@
+<!-- templates/view_tenant.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Details</title>
+</head>
+<body>
+    <h1>Tenant Details for {{ tenant.first_name }} {{ tenant.last_name }}</h1>
+
+    <!-- Tenant Information -->
+    <p><strong>Apartment Number:</strong> {{ tenant.apartment_number }}</p>
+    <p><strong>Email:</strong> {{ tenant.email }}</p>
+    <p><strong>Phone:</strong> {{ tenant.phone }}</p>
+    <p><strong>Notes:</strong> {{ tenant.notes }}</p>
+
+    <!-- Update Notes Form -->
+    <h2>Update Notes</h2>
+    <form action="{{ url_for('update_notes', id=tenant.id) }}" method="POST">
+        <div class="form-group">
+            <label for="notes">Update Notes:</label>
+            <textarea name="notes" class="form-control" id="notes" rows="4">{{ tenant.notes }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Notes</button>
+    </form>
+
+    <br><br>
+    <a href="{{ url_for('index') }}">Back to Tenant List</a>
+</body>
+</html>
