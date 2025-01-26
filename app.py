@@ -1,11 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.utils import secure_filename
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your_secret_key'  # To use Flask's session for flashing messages
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
+
 db = SQLAlchemy(app)
 
 # Tenant model
@@ -22,6 +27,9 @@ class Tenant(db.Model):
     
     # Relationship to notes (one-to-many)
     notes = db.relationship('Note', backref='tenant', lazy=True, cascade='all, delete-orphan')
+    
+    # Relationship to uploaded files (one-to-many)
+    uploaded_files = db.relationship('UploadedFile', backref='tenant', lazy=True)
 
 # Complaint model
 class Complaint(db.Model):
@@ -31,14 +39,23 @@ class Complaint(db.Model):
     status = db.Column(db.String(50), default="Open")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+    file_path = db.Column(db.String(200))  # Field to store file path if any
 
-# Note model (New model to store individual notes for each tenant)
+# Note model
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
     note_type = db.Column(db.String(50))  # New field to store the note type (complaint, payment, late fee)
+
+# UploadedFile model for files uploaded by tenants
+class UploadedFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(200), nullable=False)
+    file_path = db.Column(db.String(200), nullable=False)  # Path to the uploaded file
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Home page (List tenants)
 @app.route('/')
@@ -112,9 +129,43 @@ def delete_note(note_id):
     flash('Note deleted successfully!', 'success')
     return redirect(url_for('view_tenant', id=tenant_id))
 
+# Helper function to check if file type is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# Add file upload route (Independent of notes)
+@app.route('/upload_file/<int:tenant_id>', methods=['GET', 'POST'])
+def upload_file(tenant_id):
+    tenant = Tenant.query.get_or_404(tenant_id)
+
+    if request.method == 'POST':
+        file = request.files['file']  # Get the file from the form
+        
+        # Handle file upload
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)  # Secure the filename
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)  # Create file path
+            file.save(file_path)  # Save the file
+
+            # Save file info to the database
+            uploaded_file = UploadedFile(filename=filename, file_path=file_path, tenant_id=tenant.id)
+            db.session.add(uploaded_file)
+            db.session.commit()
+
+            flash('File uploaded successfully!', 'success')
+            return redirect(url_for('index'))  # Redirect back to the tenant list
+        else:
+            flash('Invalid file type. Please upload a valid file.', 'danger')
+
+    return redirect(url_for('index'))  # Redirect back to the tenant list if GET request
+
 # Create the database tables
 with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
+    # Ensure the upload folder exists
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+    
     app.run(debug=True)

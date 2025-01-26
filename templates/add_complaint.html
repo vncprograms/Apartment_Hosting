@@ -7,12 +7,15 @@
 </head>
 <body>
     <h1>Add Complaint for {{ tenant.first_name }} {{ tenant.last_name }}</h1>
-    <form action="{{ url_for('add_complaint', tenant_id=tenant.id) }}" method="POST">
+    <form action="{{ url_for('add_complaint', tenant_id=tenant.id) }}" method="POST" enctype="multipart/form-data">
         <label for="title">Complaint Title:</label>
         <input type="text" name="title" required><br><br>
 
         <label for="description">Complaint Description:</label>
         <textarea name="description" required></textarea><br><br>
+
+        <label for="file">Upload a File (Optional):</label>
+        <input type="file" name="file"><br><br>
 
         <button type="submit">Add Complaint</button>
     </form>
